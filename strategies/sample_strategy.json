@@ -1,0 +1,6 @@
+{
+  "name": "Sample_Strategy",
+  "created": "2025-05-29T00:00:00.000Z",
+  "trend": "up",
+  "rules": "BUY when 15-min trend is up and volume supports"
+}

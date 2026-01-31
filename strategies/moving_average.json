@@ -1,0 +1,7 @@
+{
+    "name": "Moving Average",
+    "description": "Compares current price with moving average",
+    "params": {
+        "period": 14
+    }
+}

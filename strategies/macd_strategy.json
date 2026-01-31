@@ -1,0 +1,9 @@
+{
+    "name": "MACD Strategy",
+    "description": "Uses MACD crossovers for signals",
+    "params": {
+        "fastPeriod": 12,
+        "slowPeriod": 26,
+        "signalPeriod": 9
+    }
+}

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>SmartTradeAI</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      width: 300px;
+      padding: 0;
+      margin: 0;
+      background: #1e1e2d;
+      color: white;
+    }
+
+    .popup-header {
+      background: #2d2d3d;
+      padding: 16px;
+      text-align: center;
+      border-bottom: 1px solid #3d3d4d;
+    }
+
+    .popup-header img {
+      width: 40px;
+      height: 40px;
+    }
+
+    .popup-header h1 {
+      margin: 8px 0 0 0;
+      font-size: 18px;
+    }
+
+    .popup-content {
+      padding: 16px;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .btn-group button {
+      flex: 1;
+    }
+
+    #status {
+      margin-top: 16px;
+      padding: 8px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.05);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .settings-link {
+      display: block;
+      text-align: center;
+      margin-top: 16px;
+      color: #a0a0c0;
+      font-size: 12px;
+      text-decoration: none;
+    }
+
+    .settings-link:hover {
+      color: white;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="popup-header">
+    <img src="assets/icon.png" alt="SmartTradeAI">
+    <h1>SmartTradeAI</h1>
+  </div>
+
+  <div class="popup-content">
+    <p>AI-powered market analysis and trading signals</p>
+
+    <div class="btn-group">
+      <button id="analyze">Analyze</button>
+      <button id="simulate">Simulate</button>
+    </div>
+
+    <div id="status"></div>
+
+    <a href="#" class="settings-link">Settings & Strategies</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+
+</html>

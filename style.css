@@ -1,0 +1,179 @@
+.smarttradeai-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 320px;
+  background: #2d2d3d;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 9999;
+  font-family: Arial, sans-serif;
+  color: white;
+  overflow: hidden;
+}
+
+.smarttradeai-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: #3d3d4d;
+  border-bottom: 1px solid #4d4d5d;
+}
+
+.smarttradeai-header h3 {
+  margin: 0 0 0 10px;
+  flex-grow: 1;
+  font-size: 16px;
+}
+
+.smarttradeai-close {
+  cursor: pointer;
+  font-size: 20px;
+  padding: 0 5px;
+}
+
+.smarttradeai-content {
+  padding: 16px;
+}
+
+.smarttradeai-prediction {
+  font-size: 24px;
+  font-weight: bold;
+  text-align: center;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.smarttradeai-prediction.buy {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+}
+
+.smarttradeai-prediction.sell {
+  background: rgba(244, 67, 54, 0.2);
+  color: #F44336;
+}
+
+.smarttradeai-prediction.hold {
+  background: rgba(255, 193, 7, 0.2);
+  color: #FFC107;
+}
+
+.smarttradeai-confidence span {
+  font-weight: bold;
+  color: #FFC107;
+}
+
+.smarttradeai-details p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.smarttradeai-trade {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #3d3d4d;
+}
+
+.smarttradeai-trade h4 {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+}
+
+.smarttradeai-trade-details div {
+  display: flex;
+  justify-content: space-between;
+  margin: 6px 0;
+  font-size: 13px;
+}
+
+.smarttradeai-profit {
+  margin-top: 12px;
+  text-align: center;
+  font-weight: bold;
+  padding: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.smarttradeai-container.error {
+  border-left: 4px solid #F44336;
+}
+
+button {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+button:hover {
+  background: #3e8e41;
+}
+
+button:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+}
+
+#smarttradeai-retry {
+  width: 100%;
+  margin-top: 12px;
+}
+
+/* Add these new styles to your existing style.css */
+.smarttradeai-simulation-chart {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #3d3d4d;
+}
+
+.candle-chart {
+  display: flex;
+  height: 120px;
+  align-items: flex-end;
+  gap: 8px;
+  padding-bottom: 20px;
+  /* Space for time labels */
+  border-bottom: 1px solid #3d3d4d;
+  margin-top: 10px;
+  position: relative;
+}
+
+.candle {
+  position: relative;
+  width: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.candle-wick {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1px;
+  background: #a0a0c0;
+}
+
+/* Timeline markers */
+.candle-chart::before {
+  content: "Now";
+  position: absolute;
+  bottom: -20px;
+  left: 0;
+  font-size: 10px;
+  color: #a0a0c0;
+}
+
+.candle-chart::after {
+  content: "+5min";
+  position: absolute;
+  bottom: -20px;
+  right: 0;
+  font-size: 10px;
+  color: #a0a0c0;
+}
