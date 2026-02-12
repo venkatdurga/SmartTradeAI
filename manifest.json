@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "SmartTradeAI",
-  "version": "1.0",
-  "description": "AI-based market analysis and trading strategy Chrome Extension",
+  "name": "SmartTradeAI 2.0",
+  "version": "2.0",
+  "description": "ML-powered market analysis and trading strategy Chrome Extension - 10 strategies with AI prediction",
   "permissions": [
     "storage",
     "activeTab",
@@ -11,7 +11,8 @@
   ],
   "host_permissions": [
     "https://*.binance.com/*",
-    "https://api.binance.com/*"
+    "https://api.binance.com/*",
+    "http://127.0.0.1:5000/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -31,6 +32,7 @@
         "*://*.binance.com/*"
       ],
       "js": [
+        "api-client.js",
         "content.js"
       ],
       "css": [

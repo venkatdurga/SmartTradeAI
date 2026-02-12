@@ -346,12 +346,17 @@ async function drawPrediction(result, candles) {
       try {
         const projection = await calculateProjection(result, candles);
 
+        const profitDisplay = document.getElementById("profit-display");
+        if (!profitDisplay) return;
+
         const profitColor = projection.isProfit ? "#4CAF50" : "#F44336";
         const profitText = projection.isProfit ? "Profit" : "Loss";
         const profitAmount = `$${Math.abs(projection.profit).toFixed(2)}`;
 
-        document.getElementById("current-price").textContent = `$${projection.currentPrice.toFixed(2)}`;
-        document.getElementById("profit-display").innerHTML = `
+        const currentPriceEl = document.getElementById("current-price");
+        if (currentPriceEl) currentPriceEl.textContent = `$${projection.currentPrice.toFixed(2)}`;
+
+        profitDisplay.innerHTML = `
           <div style="color: ${profitColor}; font-weight: bold;">
             5-min Projection: ${profitText} of ${profitAmount}
           </div>
@@ -362,12 +367,15 @@ async function drawPrediction(result, candles) {
         `;
       } catch (error) {
         console.error("Update error:", error);
-        document.getElementById("profit-display").innerHTML = `
-          <div style="color: #FFC107;">
-            Update failed: ${error.message}
-          </div>
-          <button onclick="window.location.reload()">Retry</button>
-        `;
+        const profitDisplay = document.getElementById("profit-display");
+        if (profitDisplay) {
+          profitDisplay.innerHTML = `
+            <div style="color: #FFC107;">
+              Update failed: ${error.message}
+            </div>
+            <button onclick="window.location.reload()">Retry</button>
+          `;
+        }
       }
     };
 
@@ -409,27 +417,48 @@ function calculateProjection(result, candles) {
       const variance = priceChanges.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / priceChanges.length;
       const stdDev = Math.sqrt(variance);
 
-      // Get current trading pair
+      // Get current trading pair from URL
       const pathParts = window.location.pathname.split('/');
-      let pair = pathParts[pathParts.length - 1].split('?')[0];
-      pair = pair.replace('_', '').toLowerCase() + '@ticker';
+      let pair = pathParts[pathParts.length - 1].split('?')[0].toLowerCase();
 
-      // Connect to WebSocket
-      const ws = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_1m`);
+      // Ensure it ends with @kline_1m for WebSocket
+      if (!pair.includes('@')) {
+        pair = pair.replace('usdt', '') + 'usdt@kline_1m';
+      }
+
+      // Connect to WebSocket with proper error handling
+      const wsUrl = `wss://stream.binance.com:9443/ws/${pair}`;
+      let ws;
+
+      try {
+        ws = new WebSocket(wsUrl);
+      } catch (error) {
+        console.error("WebSocket connection error:", error);
+        resolve(getFallbackProjection(result, stdDev));
+        return;
+      }
 
       const timeout = setTimeout(() => {
-        ws.close();
+        if (ws) ws.close();
         resolve(getFallbackProjection(result, stdDev));
       }, 5000);
+
+      ws.onopen = () => {
+        console.log("WebSocket connected for pair:", pair);
+      };
 
       ws.onmessage = (event) => {
         clearTimeout(timeout);
         try {
-          const data = JSON.parse(event.data);
-          const currentPrice = parseFloat(data.c);
+          if (!event.data) {
+            throw new Error("No data in WebSocket message");
+          }
 
-          if (isNaN(currentPrice)) {
-            throw new Error("Invalid price data received");
+          const data = JSON.parse(event.data);
+          const currentPrice = parseFloat(data.k?.c || data.c);
+
+          if (isNaN(currentPrice) || currentPrice <= 0) {
+            throw new Error("Invalid price data received: " + currentPrice);
           }
 
           let projectedPrice = currentPrice * (1 + gaussianRandom(0, stdDev * 1.5));
@@ -444,7 +473,7 @@ function calculateProjection(result, candles) {
             ? (projectedPrice - entry) / entry * 1000
             : (entry - projectedPrice) / entry * 1000;
 
-          ws.close();
+          if (ws) ws.close();
           resolve({
             projectedPrice,
             profit,
@@ -453,20 +482,26 @@ function calculateProjection(result, candles) {
           });
         } catch (error) {
           console.error("WebSocket data error:", error);
-          ws.close();
+          if (ws) ws.close();
           resolve(getFallbackProjection(result, stdDev));
         }
       };
 
       ws.onerror = (error) => {
         clearTimeout(timeout);
-        console.error("WebSocket error:", error);
+        console.error("WebSocket error:", error && error.message ? error.message : "Connection failed");
+        if (ws) ws.close();
         resolve(getFallbackProjection(result, stdDev));
+      };
+
+      ws.onclose = () => {
+        clearTimeout(timeout);
+        console.log("WebSocket closed for pair:", pair);
       };
 
     } catch (error) {
       console.error("Projection calculation error:", error);
-      resolve(getFallbackProjection(result, 0.01)); // Default stdDev if calculation fails
+      resolve(getFallbackProjection(result, 0.01));
     }
   });
 
@@ -523,10 +558,11 @@ function drawError(message) {
   overlay.querySelector("#smarttradeai-retry").addEventListener("click", analyzeMarket);
 }
 
+// DISABLED: Use popup.js UI instead
 // Check if we're on a Binance trading page and analyze
-if (window.location.hostname.includes('binance.com') &&
-  window.location.pathname.includes('/trade/')) {
-  analyzeMarket();
-}
+// if (window.location.hostname.includes('binance.com') &&
+//   window.location.pathname.includes('/trade/')) {
+//   analyzeMarket();
+// }
 
 

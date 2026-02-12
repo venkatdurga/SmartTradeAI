@@ -1,106 +1,276 @@
+/**
+ * SmartTradeAI Popup - ML Edition v2.0
+ * Modern UI with enhanced visualization
+ */
 
-document.addEventListener('DOMContentLoaded', function () {
-  document.getElementById("analyze").addEventListener("click", analyzeCurrentTab);
-  document.getElementById("simulate").addEventListener("click", simulateTrading);
-  document.querySelector(".settings-link").addEventListener("click", openSettings);
+let currentTradingPair = 'BTCUSDT';
+// apiClient is already created in api-client.js
 
-  // Check if we're on a Binance trading page
-  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-    if (tabs.length > 0) {
-      const isBinance = tabs[0].url.includes('binance.com') &&
-        tabs[0].url.includes('/trade/');
+document.addEventListener('DOMContentLoaded', async function () {
+    // Initialize API connection status
+    await updateAPIStatus();
 
-      if (!isBinance) {
-        document.getElementById("status").textContent =
-          "Please open a Binance trading page to use this extension";
-        document.getElementById("analyze").disabled = true;
-        document.getElementById("simulate").disabled = true;
-      }
-    }
-  });
+    // Button event listeners
+    document.getElementById("analyze").addEventListener("click", analyzeCurrentMarket);
+    document.getElementById("ai-predict").addEventListener("click", runAIPrediction);
+    document.getElementById("simulate").addEventListener("click", simulateTrading);
+
+    // Footer links
+    document.getElementById("settings").addEventListener("click", function (e) {
+        e.preventDefault();
+        chrome.runtime.openOptionsPage();
+    });
+
+    document.getElementById("open-dashboard").addEventListener("click", function (e) {
+        e.preventDefault();
+        chrome.tabs.create({ url: chrome.runtime.getURL('options.html') });
+    });
+
+    // Extract trading pair from Binance URL
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+        if (tabs.length > 0) {
+            const url = tabs[0].url;
+            if (url.includes('binance.com') && (url.includes('/trade/') || url.includes('/futures/'))) {
+                const pathParts = url.split('/');
+                const pair = pathParts[pathParts.length - 1].split('?')[0];
+                if (pair && pair.includes('USDT')) {
+                    currentTradingPair = pair;
+                }
+            } else {
+                document.getElementById("status").textContent = "⚠️ Open Binance trading page";
+                disableAllButtons(true);
+            }
+        }
+    });
 });
 
-function analyzeCurrentTab() {
-  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-    if (tabs.length > 0) {
-      document.getElementById("status").textContent = "Analyzing market...";
+function disableAllButtons(disabled) {
+    const analyze = document.getElementById("analyze");
+    const predict = document.getElementById("ai-predict");
+    const simulate = document.getElementById("simulate");
 
-      chrome.scripting.executeScript({
-        target: { tabId: tabs[0].id },
-        func: analyzeMarket
-      }, () => {
-        document.getElementById("status").textContent = "Analysis complete!";
-        setTimeout(() => {
-          document.getElementById("status").textContent = "";
-        }, 2000);
-      });
-    }
-  });
+    if (analyze) analyze.disabled = disabled;
+    if (predict) predict.disabled = disabled;
+    if (simulate) simulate.disabled = disabled;
 }
 
-function simulateTrading() {
-  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-    if (tabs.length > 0) {
-      document.getElementById("status").textContent = "Running real-time simulation...";
+/**
+ * Update API connection status
+ */
+async function updateAPIStatus() {
+    const indicator = document.getElementById("api-indicator");
+    const statusText = document.getElementById("api-status-text");
 
-      chrome.scripting.executeScript({
-        target: { tabId: tabs[0].id },
-        func: async () => {
-          // First run the actual analysis to get real market data
-          await analyzeMarket();
+    if (!indicator || !statusText) {
+        console.log("Status elements not found - popup may not be loaded");
+        return;
+    }
 
-          // Get the latest prediction from the overlay
-          const overlay = document.getElementById("smarttradeai-overlay");
-          if (!overlay) {
-            throw new Error("Please run analysis first");
-          }
+    try {
+        const isConnected = await apiClient.checkConnection();
 
-          // Extract the current prediction
-          const prediction = overlay.querySelector(".smarttradeai-prediction").textContent;
-          const confidence = parseInt(overlay.querySelector(".smarttradeai-confidence span").textContent);
-          const strategy = overlay.querySelector(".smarttradeai-details p:nth-child(1)").textContent.replace("Strategy: ", "");
-          const logic = overlay.querySelector(".smarttradeai-details p:nth-child(2)").textContent.replace("Logic: ", "");
-          const currentPrice = parseFloat(overlay.querySelector(".smarttradeai-details p:nth-child(3)").textContent.replace(/[^0-9.]/g, ''));
-
-          // Get the trade details
-          const entry = parseFloat(overlay.querySelector(".smarttradeai-trade-details div:nth-child(1) span:nth-child(2)").textContent.replace(/[^0-9.]/g, ''));
-          const stopLoss = parseFloat(overlay.querySelector(".smarttradeai-trade-details div:nth-child(2) span:nth-child(2)").textContent.replace(/[^0-9.]/g, ''));
-          const takeProfit = parseFloat(overlay.querySelector(".smarttradeai-trade-details div:nth-child(3) span:nth-child(2)").textContent.replace(/[^0-9.]/g, ''));
-
-          // Create the result object
-          const result = {
-            name: strategy,
-            prediction,
-            confidence,
-            entry,
-            stopLoss,
-            takeProfit,
-            logic,
-            timestamp: Date.now()
-          };
-
-          // Fetch real-time data for simulation
-          const realTimeData = await fetchRealTimeData();
-          const simulatedCandles = generateSimulationCandles(realTimeData, result);
-
-          // Update the overlay with simulation results
-          drawPrediction(result, simulatedCandles, true);
+        if (isConnected) {
+            indicator.classList.add("connected");
+            statusText.textContent = "✅ Connected & Ready";
+            disableAllButtons(false);
+        } else {
+            indicator.classList.remove("connected");
+            statusText.textContent = "⚠️ API Available (Models Loading)";
+            disableAllButtons(false);
         }
-      }, () => {
-        document.getElementById("status").textContent = "Simulation complete!";
-        setTimeout(() => {
-          document.getElementById("status").textContent = "";
-        }, 2000);
-      });
+    } catch (error) {
+        if (indicator) indicator.classList.remove("connected");
+        if (statusText) statusText.textContent = "❌ Backend Offline";
+        disableAllButtons(true);
+        console.error("API Error:", error);
     }
-  });
 }
 
-function openSettings() {
-  chrome.runtime.openOptionsPage();
+/**
+ * Analyze current market
+ */
+async function analyzeCurrentMarket() {
+    const btn = document.getElementById("analyze");
+    const status = document.getElementById("status");
+    const mlResults = document.getElementById("ml-results");
+
+    if (!btn || !status || !mlResults) {
+        console.error("Required popup elements not found");
+        return;
+    }
+
+    try {
+        btn.disabled = true;
+        status.classList.add("loading");
+        status.textContent = "🔄 Analyzing with 10 strategies...";
+        mlResults.classList.remove("show");
+
+        const analysis = await apiClient.analyzeMarket(currentTradingPair, '1h', 100);
+
+        if (!analysis || !analysis.primary_signal) {
+            throw new Error("Invalid analysis data");
+        }
+
+        status.classList.remove("loading");
+        status.textContent = "✅ Analysis Complete!";
+
+        // Update UI with results
+        const primary = analysis.primary_signal;
+        const confidence = Math.round(primary.confidence);
+
+        // Primary Strategy - with null checks
+        const detectedStrategy = document.getElementById("detected-strategy");
+        const strategyConf = document.getElementById("strategy-confidence");
+        if (detectedStrategy) detectedStrategy.textContent = primary.strategy.replace(/_/g, ' ');
+        if (strategyConf) {
+            strategyConf.textContent = `${confidence}%`;
+            strategyConf.className = "badge";
+        }
+
+        // Price Action - with null checks
+        const priceAction = document.getElementById("price-action");
+        const priceConf = document.getElementById("price-confidence");
+        if (priceAction) priceAction.textContent = primary.action;
+        if (priceConf) {
+            priceConf.textContent = `${confidence}%`;
+            priceConf.className = `badge ${primary.action.toLowerCase()}`;
+        }
+
+        // Risk Management - with null checks
+        const risk = analysis.risk_management;
+        const entryPrice = document.getElementById("entry-price");
+        const stopLoss = document.getElementById("stop-loss");
+        const takeProfit = document.getElementById("take-profit");
+        const posSize = document.getElementById("position-size");
+
+        if (entryPrice) entryPrice.textContent = `$${risk.entry.toFixed(2)}`;
+        if (stopLoss) stopLoss.textContent = `$${risk.stop_loss.toFixed(2)}`;
+        if (takeProfit) takeProfit.textContent = `$${risk.take_profit.toFixed(2)}`;
+        if (posSize) posSize.textContent = risk.position_size;
+
+        // Show results
+        mlResults.classList.add("show");
+
+        // Notify
+        chrome.runtime.sendMessage({
+            type: "showNotification",
+            message: `${primary.action} Signal: ${primary.strategy}`,
+            notificationType: primary.action === 'BUY' ? 'info' : 'warning'
+        }).catch(() => { });
+
+    } catch (error) {
+        if (status) {
+            status.classList.remove("loading");
+            status.textContent = `❌ ${error.message}`;
+        }
+        console.error("Analysis Error:", error);
+    } finally {
+        if (btn) btn.disabled = false;
+    }
 }
 
-// Declare analyzeMarket for the executeScript call
-function analyzeMarket() {
-  console.log("Analysis would run here");
+/**
+ * Run AI multi-timeframe prediction
+ */
+async function runAIPrediction() {
+    const btn = document.getElementById("ai-predict");
+    const status = document.getElementById("status");
+    const mlResults = document.getElementById("ml-results");
+
+    if (!btn || !status) {
+        console.error("Required elements not found");
+        return;
+    }
+
+    try {
+        btn.disabled = true;
+        status.classList.add("loading");
+        status.textContent = "🤖 ML Predicting...";
+
+        const [pred5, pred15, pred30] = await Promise.all([
+            apiClient.predict5Min(currentTradingPair),
+            apiClient.predict15Min(currentTradingPair),
+            apiClient.predict30Min(currentTradingPair)
+        ]);
+
+        const avgProb = (pred5.probability_up + pred15.probability_up + pred30.probability_up) / 3;
+        const isUp = avgProb > 0.55;
+        const confidence = Math.round(Math.abs(avgProb - 0.5) * 200);
+
+        status.classList.remove("loading");
+        status.innerHTML = `
+            <strong>5-Min:</strong> ${(pred5.probability_up * 100).toFixed(0)}% ↑ | 
+            <strong>15-Min:</strong> ${(pred15.probability_up * 100).toFixed(0)}% ↑ | 
+            <strong>30-Min:</strong> ${(pred30.probability_up * 100).toFixed(0)}% ↑
+        `;
+
+        // Update signal box - with null checks
+        const priceAction = document.getElementById("price-action");
+        const priceConf = document.getElementById("price-confidence");
+        if (priceAction) priceAction.textContent = isUp ? '📈 UP' : '📉 DOWN';
+        if (priceConf) {
+            priceConf.textContent = `${confidence}%`;
+            priceConf.className = `badge ${isUp ? 'buy' : 'sell'}`;
+        }
+
+        if (mlResults) mlResults.classList.add("show");
+
+        chrome.runtime.sendMessage({
+            type: "showNotification",
+            message: `Prediction: ${isUp ? '📈 UP' : '📉 DOWN'} (${confidence}% confidence)`,
+            notificationType: "info"
+        }).catch(() => { });
+
+    } catch (error) {
+        if (status) {
+            status.classList.remove("loading");
+            status.textContent = `❌ Prediction Error: ${error.message}`;
+        }
+        console.error("Prediction Error:", error);
+    } finally {
+        if (btn) btn.disabled = false;
+    }
 }
+
+/**
+ * Simulate trading
+ */
+async function simulateTrading() {
+    const btn = document.getElementById("simulate");
+    const status = document.getElementById("status");
+
+    if (!btn || !status) {
+        console.error("Required elements not found");
+        return;
+    }
+
+    try {
+        btn.disabled = true;
+        status.classList.add("loading");
+        status.textContent = "📈 Starting simulation...";
+
+        const analysis = await apiClient.analyzeMarket(currentTradingPair);
+        const primary = analysis.primary_signal;
+        const risk = analysis.risk_management;
+
+        status.classList.remove("loading");
+        status.textContent = `✅ Simulating ${primary.action} @ $${risk.entry.toFixed(2)}`;
+
+        chrome.runtime.sendMessage({
+            type: "showNotification",
+            message: `Simulating ${primary.action} trade at $${risk.entry.toFixed(2)}`,
+            notificationType: "success"
+        }).catch(() => { });
+
+    } catch (error) {
+        if (status) {
+            status.classList.remove("loading");
+            status.textContent = `❌ Simulation Error: ${error.message}`;
+        }
+        console.error("Simulation Error:", error);
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+// Refresh API status every 30 seconds

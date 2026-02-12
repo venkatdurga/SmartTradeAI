@@ -3,3 +3,9 @@
 .idea/
 
 
+backend/
+
+/api-client.js
+/UPGRADE_GUIDE.md
+/README-v2.md
+/COMPLETION_SUMMARY.md
